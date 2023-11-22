@@ -147,19 +147,62 @@ void array_quick_sort(struct array *self) {
     array_quick_sort_recursive(self, 0, (ptrdiff_t) self->size - 1);
 }
 
+bool array_heap_has_left_child(const struct array *self, size_t index) {
+    return 2 * index + 1 < self->size;
+}
+
+bool array_heap_has_right_child(const struct array *self, size_t index) {
+    return 2 * index + 2 < self->size;
+}
+
+size_t array_heap_left_index(const struct array *self, size_t index) {
+    assert(array_heap_has_left_child(self, index));
+    return 2 * index + 1;
+}
+
+size_t array_heap_right_index(const struct array *self, size_t index) {
+    assert(array_heap_has_right_child(self, index));
+    return 2 * index + 2;
+}
+
+size_t array_heap_parent_index(const struct array *self, size_t index) {
+    assert(index > 0);
+    return (index - 1) / 2;
+}
 
 void array_heap_sort(struct array *self) {
 }
 
+bool array_is_heap_recursive(const struct array *self, size_t index) {
+    if (array_heap_has_left_child(self, index)) {
+        if (array_get(self, index) < array_get(self, array_heap_left_index(self, index))) return false;
+        if (!array_is_heap_recursive(self, array_heap_left_index(self, index))) return false;
+    }
+    if (array_heap_has_right_child(self, index)) {
+        if (array_get(self, index) < array_get(self, array_heap_right_index(self, index))) return false;
+        if (!array_is_heap_recursive(self, array_heap_right_index(self, index))) return false;
+    }
+    return true;
+}
+
 bool array_is_heap(const struct array *self) {
-  return false;
+    if (self->size == 0) return true;
+    return array_is_heap_recursive(self, 0);
 }
 
 void array_heap_add(struct array *self, int value) {
+    array_insert(self, value, self->size);
+    size_t currentIndex = self->size - 1;
+    while (currentIndex != 0) {
+        size_t parentIndex = array_heap_parent_index(self, currentIndex);
+        if (array_get(self, parentIndex) > array_get(self, currentIndex)) return;
+        array_swap(self, currentIndex, parentIndex);
+        currentIndex = parentIndex;
+    }
 }
 
 int array_heap_top(const struct array *self) {
-  return 42;
+    return array_get(self, 0);
 }
 
 void array_heap_remove_top(struct array *self) {
@@ -452,9 +495,52 @@ bool tree_insert(struct tree *self, int value) {
     return true;
 }
 
+struct tree_node *tree_delete_minimum(struct tree_node *node, struct tree_node **min) {
+    if (node->left == NULL) {
+        struct tree_node *right = node->right;
+        node->right = NULL;
+        *min = node;
+        return right;
+    }
+    node->left = tree_delete_minimum(node->left, min);
+    return node;
+}
+
+struct tree_node *tree_delete(struct tree_node *node) {
+    struct tree_node *left = node->left;
+    struct tree_node *right = node->right;
+    free(node);
+    node = NULL;
+    if (left == NULL && right == NULL) return NULL;
+    if (left == NULL) return right;
+    if (right == NULL) return left;
+    right = tree_delete_minimum(right, &node);
+    node->left = left;
+    node->right = right;
+    return node;
+}
+
+struct tree_node *tree_node_remove(struct tree_node *node, int data, bool *found) {
+    if (node == NULL) {
+        *found = false;
+        return NULL;
+    }
+    if (data < node->data) {
+        node->left = tree_node_remove(node->left, data, found);
+        return node;
+    }
+    if (data > node->data) {
+        node->right = tree_node_remove(node->right, data, found);
+        return node;
+    }
+    return tree_delete(node);
+}
 
 bool tree_remove(struct tree *self, int value) {
     return false;
+    bool found = true;
+    tree_node_remove(self->root, value, &found);
+    return found;
 }
 
 bool tree_empty(const struct tree *self) {
