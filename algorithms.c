@@ -10,7 +10,7 @@ const int A = 2;
 void array_create(struct array *self) {
     self->size = 0;
     self->capacity = 10;
-    self->data = malloc(10);
+    self->data = calloc(10, sizeof(int));
 }
 
 void array_create_from(struct array *self, const int *other, size_t size) {
@@ -47,7 +47,7 @@ void array_increase_capacity(struct array *self) {
 }
 
 void array_push_back(struct array *self, int value) {
-    if (self->size == self->capacity) array_increase_capacity(self);
+    if (self->size >= self->capacity) array_increase_capacity(self);
     self->data[self->size] = value;
     self->size++;
 }
@@ -171,17 +171,14 @@ size_t array_heap_parent_index(size_t index) {
 }
 
 void array_heap_sort(struct array *self) {
-    size_t size = self->size;
-    for (size_t i = 0; i < size; i++) {
-        int value = array_get(self, i);
-        array_heap_add(self, value);
+    struct array temp;
+    array_create(&temp);
+    for (size_t i = 0; i < self->size; i++) array_heap_add(&temp, self->data[i]);
+    for (size_t i = 0; i < self->size; i++) {
+        self->data[self->size - i - 1] = array_heap_top(&temp);
+        array_heap_remove_top(&temp);
     }
-    for (size_t i = 0; i < size; i++) {
-        int value = array_get(self, 0);
-        array_heap_remove_top(self);
-        self->data[self->size - i - 1] = value;
-    }
-
+    array_destroy(&temp);
 }
 
 bool array_is_heap_recursive(const struct array *self, size_t index) {
@@ -203,10 +200,10 @@ bool array_is_heap(const struct array *self) {
 
 void array_heap_add(struct array *self, int value) {
     size_t currentIndex = self->size;
-    array_insert(self, value, currentIndex);
-    while (currentIndex != 0) {
+    array_push_back(self, value);
+    while (currentIndex > 0) {
         size_t parentIndex = array_heap_parent_index(currentIndex);
-        if (array_get(self, parentIndex) > array_get(self, currentIndex)) return;
+        if (self->data[currentIndex] < self->data[parentIndex]) break;
         array_swap(self, currentIndex, parentIndex);
         currentIndex = parentIndex;
     }
@@ -218,20 +215,20 @@ int array_heap_top(const struct array *self) {
 }
 
 void array_heap_remove_top(struct array *self) {
-    self->data[0] = self->data[self->size - 1];
-    int currentIndex = 0;
-    while (true) {
-        int leftIndex = array_heap_has_left_child(self, currentIndex) ? (int) array_heap_left_index(self, currentIndex) : -1;
-        int rightIndex = array_heap_has_right_child(self, currentIndex) ? (int) array_heap_right_index(self, currentIndex) : -1;
-        int maxChild = -1;
-        if (leftIndex != -1 && self->data[leftIndex] > self->data[currentIndex]) maxChild = leftIndex;
-        if (rightIndex != -1
-            && self->data[rightIndex] > self->data[currentIndex]
-            && (maxChild == -1 || self->data[maxChild] < self->data[rightIndex])) maxChild = rightIndex;
-        if (maxChild == -1) return;
-        array_swap(self, currentIndex, maxChild);
-        currentIndex = maxChild;
+    size_t size = self->size;
+    self->data[0] = self->data[size - 1];
+    size_t i = 0;
+    while (i < (size - 1) / 2) {
+        size_t lt = 2 * i + 1;
+        size_t rt = 2 * i + 2;
+        if ((lt >= size || self->data[i] > self->data[lt]) && (rt >= size || self->data[i] > self->data[rt])) {
+            break;
+        }
+        size_t j = (self->data[lt] > self->data[rt]) ? lt : rt;
+        array_swap(self, i, j);
+        i = j;
     }
+    self->size--;
 }
 
 
