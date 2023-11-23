@@ -787,17 +787,17 @@ TEST(ArrayIsHeapTest, NotHeap2) {
  */
 
 TEST(ArrayHeapAddTest, Stressed) {
-  struct array a;
+    struct array a;
 
-  array_create(&a);
+    array_create(&a);
 
-  for (int i = 0; i < BIG_SIZE; ++i) {
-    array_heap_add(&a, i);
-    EXPECT_EQ(i, array_heap_top(&a));
-    EXPECT_TRUE(array_is_heap(&a));
-  }
+    for (int i = 0; i < BIG_SIZE; ++i) {
+        array_heap_add(&a, i);
+        EXPECT_EQ(i, array_heap_top(&a));
+        EXPECT_TRUE(array_is_heap(&a));
+    }
 
-  array_destroy(&a);
+    array_destroy(&a);
 }
 
 /*

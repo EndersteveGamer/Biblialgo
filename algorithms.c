@@ -41,7 +41,7 @@ bool array_equals(const struct array *self, const int *content, size_t size) {
 void array_increase_capacity(struct array *self) {
     self->capacity *= A;
     int *data = calloc(self->capacity, sizeof(int));
-    memcpy(data, self->data, self->size * sizeof(int));
+    for (size_t i = 0; i < self->size; i++) data[i] = self->data[i];
     free(self->data);
     self->data = data;
 }
@@ -165,12 +165,23 @@ size_t array_heap_right_index(const struct array *self, size_t index) {
     return 2 * index + 2;
 }
 
-size_t array_heap_parent_index(const struct array *self, size_t index) {
+size_t array_heap_parent_index(size_t index) {
     assert(index > 0);
     return (index - 1) / 2;
 }
 
 void array_heap_sort(struct array *self) {
+    size_t size = self->size;
+    for (size_t i = 0; i < size; i++) {
+        int value = array_get(self, i);
+        array_heap_add(self, value);
+    }
+    for (size_t i = 0; i < size; i++) {
+        int value = array_get(self, 0);
+        array_heap_remove_top(self);
+        self->data[self->size - i - 1] = value;
+    }
+
 }
 
 bool array_is_heap_recursive(const struct array *self, size_t index) {
@@ -191,10 +202,10 @@ bool array_is_heap(const struct array *self) {
 }
 
 void array_heap_add(struct array *self, int value) {
-    array_insert(self, value, self->size);
-    size_t currentIndex = self->size - 1;
+    size_t currentIndex = self->size;
+    array_insert(self, value, currentIndex);
     while (currentIndex != 0) {
-        size_t parentIndex = array_heap_parent_index(self, currentIndex);
+        size_t parentIndex = array_heap_parent_index(currentIndex);
         if (array_get(self, parentIndex) > array_get(self, currentIndex)) return;
         array_swap(self, currentIndex, parentIndex);
         currentIndex = parentIndex;
@@ -202,11 +213,27 @@ void array_heap_add(struct array *self, int value) {
 }
 
 int array_heap_top(const struct array *self) {
+    assert(self->size > 0);
     return array_get(self, 0);
 }
 
 void array_heap_remove_top(struct array *self) {
+    self->data[0] = self->data[self->size - 1];
+    int currentIndex = 0;
+    while (true) {
+        int leftIndex = array_heap_has_left_child(self, currentIndex) ? (int) array_heap_left_index(self, currentIndex) : -1;
+        int rightIndex = array_heap_has_right_child(self, currentIndex) ? (int) array_heap_right_index(self, currentIndex) : -1;
+        int maxChild = -1;
+        if (leftIndex != -1 && self->data[leftIndex] > self->data[currentIndex]) maxChild = leftIndex;
+        if (rightIndex != -1
+            && self->data[rightIndex] > self->data[currentIndex]
+            && (maxChild == -1 || self->data[maxChild] < self->data[rightIndex])) maxChild = rightIndex;
+        if (maxChild == -1) return;
+        array_swap(self, currentIndex, maxChild);
+        currentIndex = maxChild;
+    }
 }
+
 
 /*
  * list
@@ -442,19 +469,13 @@ void tree_create(struct tree *self) {
 
 void tree_node_destroy(struct tree_node *self) {
     if (self == NULL) return;
-    if (self->left != NULL) {
-        tree_node_destroy(self->left);
-        free(self->left);
-    }
-    if (self->left != NULL) {
-        tree_node_destroy(self->right);
-        free(self->right);
-    }
+    tree_node_destroy(self->left);
+    tree_node_destroy(self->right);
+    free(self);
 }
 
 void tree_destroy(struct tree *self) {
     tree_node_destroy(self->root);
-    free(self->root);
 }
 
 bool tree_node_contains(const struct tree_node *self, int value) {
