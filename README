@@ -1,11 +1,3 @@
-To compile:
+A C library we had to do for Algorithms and Data Structures class
 
-    make
-
-To run the tests:
-
-    ./algorithms
-
-To clean the project:
-
-    make clean
+This library is about dynamic arrays, dynamic arrays viewed as a heap, chained lists, and binary search trees
