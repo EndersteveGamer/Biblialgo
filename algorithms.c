@@ -2,8 +2,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 const int A = 2;
 
@@ -473,12 +471,14 @@ void tree_node_destroy(struct tree_node *self) {
 
 void tree_destroy(struct tree *self) {
     tree_node_destroy(self->root);
+    self->root = NULL;
 }
 
 bool tree_node_contains(const struct tree_node *self, int value) {
     if (self == NULL) return false;
-    if (self->data == value) return true;
-    return tree_node_contains(self->left, value) || tree_node_contains(self->right, value);
+    if (value < self->data) return tree_node_contains(self->left, value);
+    if (value > self->data) return tree_node_contains(self->right, value);
+    return true;
 }
 
 bool tree_contains(const struct tree *self, int value) {
@@ -494,17 +494,17 @@ struct tree_node* tree_node_create(int value) {
 }
 
 bool tree_node_insert(struct tree_node *self, int value) {
-    if (self->data == value) return false;
-    if (self->data < value) {
+    if (value < self->data) {
         if (self->left != NULL) return tree_node_insert(self->left, value);
         self->left = tree_node_create(value);
         return true;
     }
-    else {
+    if (value > self->data) {
         if (self->right != NULL) return tree_node_insert(self->right, value);
         self->right = tree_node_create(value);
         return true;
     }
+    return false;
 }
 
 bool tree_insert(struct tree *self, int value) {
@@ -513,51 +513,50 @@ bool tree_insert(struct tree *self, int value) {
     return true;
 }
 
-struct tree_node *tree_delete_minimum(struct tree_node *node, struct tree_node **min) {
-    if (node->left == NULL) {
-        struct tree_node *right = node->right;
-        node->right = NULL;
-        *min = node;
+struct tree_node *tree_delete_minimum(struct tree_node *self, struct tree_node **min) {
+    if (self->left == NULL) {
+        struct tree_node *right = self->right;
+        self->right = NULL;
+        *min = self;
         return right;
     }
-    node->left = tree_delete_minimum(node->left, min);
-    return node;
+    self->left = tree_delete_minimum(self->left, min);
+    return self;
 }
 
-struct tree_node *tree_delete(struct tree_node *node) {
-    struct tree_node *left = node->left;
-    struct tree_node *right = node->right;
-    free(node);
-    node = NULL;
+struct tree_node *tree_delete(struct tree_node *self) {
+    struct tree_node *left = self->left;
+    struct tree_node *right = self->right;
+    free(self);
+    self = NULL;
     if (left == NULL && right == NULL) return NULL;
     if (left == NULL) return right;
     if (right == NULL) return left;
-    right = tree_delete_minimum(right, &node);
-    node->left = left;
-    node->right = right;
-    return node;
+    right = tree_delete_minimum(right, &self);
+    self->left = left;
+    self->right = right;
+    return self;
 }
 
-struct tree_node *tree_node_remove(struct tree_node *node, int data, bool *found) {
-    if (node == NULL) {
+struct tree_node *tree_node_remove(struct tree_node *self, int value, bool *found) {
+    if (self == NULL) {
         *found = false;
         return NULL;
     }
-    if (data < node->data) {
-        node->left = tree_node_remove(node->left, data, found);
-        return node;
+    if (value < self->data) {
+        self->left = tree_node_remove(self->left, value, found);
+        return self;
     }
-    if (data > node->data) {
-        node->right = tree_node_remove(node->right, data, found);
-        return node;
+    if (value > self->data) {
+        self->right = tree_node_remove(self->right, value, found);
+        return self;
     }
-    return tree_delete(node);
+    return tree_delete(self);
 }
 
 bool tree_remove(struct tree *self, int value) {
-    return false;
     bool found = true;
-    tree_node_remove(self->root, value, &found);
+    self->root = tree_node_remove(self->root, value, &found);
     return found;
 }
 
@@ -586,31 +585,34 @@ size_t tree_height(const struct tree *self) {
 }
 
 void tree_node_walk_pre_order(const struct tree_node *self, tree_func_t func, void *user_data) {
+    if (self == NULL) return;
     func(self->data, user_data);
-    if (self->left != NULL) tree_node_walk_pre_order(self->left, func, user_data);
-    if (self->right != NULL) tree_node_walk_pre_order(self->right, func, user_data);
+    tree_node_walk_pre_order(self->left, func, user_data);
+    tree_node_walk_pre_order(self->right, func, user_data);
 }
 
 void tree_walk_pre_order(const struct tree *self, tree_func_t func, void *user_data) {
-    if (!tree_empty(self)) tree_node_walk_pre_order(self->root, func, user_data);
+    tree_node_walk_pre_order(self->root, func, user_data);
 }
 
 void tree_node_walk_in_order(const struct tree_node *self, tree_func_t func, void *user_data) {
-    if (self->left != NULL) tree_node_walk_in_order(self->left, func, user_data);
+    if (self == NULL) return;
+    tree_node_walk_in_order(self->left, func, user_data);
     func(self->data, user_data);
-    if (self->right != NULL) tree_node_walk_in_order(self->right, func, user_data);
+    tree_node_walk_in_order(self->right, func, user_data);
 }
 
 void tree_walk_in_order(const struct tree *self, tree_func_t func, void *user_data) {
-    if (!tree_empty(self)) tree_node_walk_in_order(self->root, func, user_data);
+    tree_node_walk_in_order(self->root, func, user_data);
 }
 
 void tree_node_walk_post_order(const struct tree_node *self, tree_func_t func, void *user_data) {
-    if (self->left != NULL) tree_node_walk_post_order(self->left, func, user_data);
-    if (self->right != NULL) tree_node_walk_post_order(self->right, func, user_data);
+    if (self == NULL) return;
+    tree_node_walk_post_order(self->left, func, user_data);
+    tree_node_walk_post_order(self->right, func, user_data);
     func(self->data, user_data);
 }
 
 void tree_walk_post_order(const struct tree *self, tree_func_t func, void *user_data) {
-    if (!tree_empty(self)) tree_node_walk_post_order(self->root, func, user_data);
+    tree_node_walk_post_order(self->root, func, user_data);
 }
